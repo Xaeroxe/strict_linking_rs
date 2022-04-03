@@ -1,4 +1,5 @@
 use std::env;
+use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use syn::{ForeignItem, Item};
 
@@ -11,7 +12,10 @@ pub fn init() {
     }
     let mut cmd = Command::new("cargo");
     cmd.env(NO_RECURSE_ENV, "")
-        .env("CARGO_TARGET_DIR", "target-strict-linking")
+        .env(
+            "CARGO_TARGET_DIR",
+            PathBuf::from(env::var("OUT_DIR").unwrap()).join("target-strict-linking"),
+        )
         .current_dir(env::var("CARGO_MANIFEST_DIR").unwrap())
         .arg(
             "+".to_string()
