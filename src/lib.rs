@@ -53,9 +53,7 @@ fn strict_link_symbol(s: &str) {
     }
 }
 
-// Calls a closure on a list of Rust items recursively for each module. If the function returns None that signals
-// to the upper layer that not only is there no enhancements for that item, but additionally that item should be removed
-// from the parent item list.
+// Calls a closure on a list of Rust items recursively for each module.
 fn call_recurse<F: FnMut(&Item)>(item: &Item, f: &mut F) {
     if let Item::Mod(mmod) = item {
         if let Some(t) = mmod.content.as_ref() {
