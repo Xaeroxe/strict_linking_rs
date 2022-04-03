@@ -1,7 +1,7 @@
 use std::env;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
-use syn::{ForeignItem, Item};
+use syn::{ForeignItem, Item, Meta};
 
 const NO_RECURSE_ENV: &str = "__STRICT_LINKING_ACTIVE";
 
@@ -40,7 +40,28 @@ pub fn init() {
                 if foreigners.abi.name.as_ref().map(|s| s.value()).as_deref() == Some("C") {
                     for foreign_item in &foreigners.items {
                         if let ForeignItem::Fn(function) = foreign_item {
-                            let c_name = function.sig.ident.to_string();
+                            let c_name = function
+                                .attrs
+                                .iter()
+                                .find(|a| {
+                                    a.path.segments.len() == 1
+                                        && a.path
+                                            .segments
+                                            .last()
+                                            .map(|s| s.ident.to_string())
+                                            .as_deref()
+                                            == Some("link_name")
+                                })
+                                .and_then(|a| a.parse_meta().ok())
+                                .and_then(|m| match m {
+                                    Meta::NameValue(nv) => Some(nv.lit),
+                                    _ => None,
+                                })
+                                .and_then(|l| match l {
+                                    syn::Lit::Str(s) => Some(s.value()),
+                                    _ => None,
+                                })
+                                .unwrap_or_else(|| function.sig.ident.to_string());
                             strict_link_symbol(&c_name);
                         }
                     }

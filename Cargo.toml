@@ -10,4 +10,4 @@ repository = "https://github.com/Xaeroxe/strict_linking_rs"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-syn = { version = "1.0.90", features = ["full"] }
+syn = { version = "1.0.90", features = ["full", "parsing"] }
