@@ -4,6 +4,7 @@ use syn::{ForeignItem, Item};
 
 const NO_RECURSE_ENV: &str = "__STRICT_LINKING_ACTIVE";
 
+/// Enforces strict linking for your crate. Use this from `build.rs`!
 pub fn init() {
     if env::var(NO_RECURSE_ENV).is_ok() {
         return;
