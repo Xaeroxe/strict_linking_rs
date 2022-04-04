@@ -1,5 +1,6 @@
 extern crate core;
 
+use std::env::VarError;
 use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;
@@ -26,20 +27,26 @@ pub fn init() {
                     .unwrap_or_else(|_| String::from("nightly")),
         )
         .args(["rustc", "--profile=check", "--", "-Zunpretty=expanded"])
-        .stdout(Stdio::piped());
-    let expanded_src = cmd
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+    let output = cmd
         .spawn()
         .expect("Failed to execute nightly rust compiler, one must be installed for strict_linking")
         .wait_with_output()
-        .expect("error executing nightly rust compiler during strict_linking")
-        .stdout;
-    let tree: syn::File = syn::parse_str(
-        &String::from_utf8(expanded_src).expect("cargo output wasn't utf8. This is a bug!"),
-    )
-    .expect("strict_linking failed to parse code as token stream");
+        .expect("error executing nightly rust compiler during strict_linking");
+    let utf8_stdout =
+        String::from_utf8(output.stdout).expect("cargo output wasn't utf8. This is a bug!");
+    assert!(
+        output.status.success(),
+        "Compiling with nightly failed.\nstdout: {}\nstderr: {}",
+        utf8_stdout,
+        String::from_utf8(output.stderr).expect("cargo output wasn't utf8. This is a bug!")
+    );
+    let tree: syn::File =
+        syn::parse_str(&utf8_stdout).expect("strict_linking failed to parse code as token stream");
     let arglist_path = out_dir.join("strict_linking_arg_list.txt");
     let mut arglist = File::create(&arglist_path).expect("Failed to create arg list file!");
-    let msvc = env::var("CARGO_CFG_TARGET_ENV").as_deref() == Ok("msvc");
+    let env = env::var("CARGO_CFG_TARGET_ENV");
 
     for item in tree.items.iter() {
         call_recurse(item, &mut |item| {
@@ -77,7 +84,7 @@ pub fn init() {
                                     _ => None,
                                 })
                                 .unwrap_or_else(|| function.sig.ident.to_string());
-                            strict_link_symbol(&mut arglist, &c_name, msvc);
+                            strict_link_symbol(&mut arglist, &c_name, &env);
                         }
                     }
                 }
@@ -86,18 +93,21 @@ pub fn init() {
     }
     arglist.flush().unwrap();
     mem::drop(arglist);
-    println!("cargo:rustc-link-arg=@{}", arglist_path.display());
+    if env.as_deref() == Ok("gnu") {
+        println!("cargo:rustc-link-arg=-Wl,@{}", arglist_path.display());
+    } else {
+        println!("cargo:rustc-link-arg=@{}", arglist_path.display());
+    }
     println!(
         "cargo:rerun-if-changed={}",
         manifest_dir.join("src").display()
     );
 }
 
-fn strict_link_symbol(out: &mut impl Write, s: &str, is_msvc: bool) {
-    if is_msvc {
-        writeln!(out, "/INCLUDE:\"{}\"", s)
-    } else {
-        writeln!(out, "--undefined=\"{}\"", s)
+fn strict_link_symbol(out: &mut impl Write, s: &str, env: &Result<String, VarError>) {
+    match env.as_deref() {
+        Ok("msvc") => writeln!(out, "/INCLUDE:\"{}\"", s),
+        _ => writeln!(out, "--require-defined={}", s),
     }
     .expect("Failed to write to arg file");
 }
