@@ -17,7 +17,7 @@ And then in your `Cargo.toml` file add this
 
 ```toml
 [build-dependencies]
-strict_linking = "0.1
+strict_linking = "0.1"
 ```
 
 # How does it work?
