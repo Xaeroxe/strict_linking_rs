@@ -1,13 +1,7 @@
-[package]
-name = "strict_linking"
-version = "0.1.3"
-edition = "2021"
-description = "Requires `extern \"C\"` blocks to resolve to symbols during linking"
-license = "MIT OR Apache-2.0"
-documentation = "https://docs.rs/strict_linking"
-repository = "https://github.com/Xaeroxe/strict_linking_rs"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-[dependencies]
-syn = { version = "1.0.90", features = ["full", "parsing"] }
+[workspace]
+members = [
+    "strict_linking",
+    "strict_linking_success_test",
+    "strict_linking_fail_test",
+    "prove-it-fails",
+]

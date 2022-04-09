@@ -11,12 +11,21 @@ env:
 
 jobs:
   build:
+    runs-on: ${{ matrix.os }}
 
-    runs-on: ubuntu-latest
+    strategy:
+        matrix:
+            os: [ubuntu-latest, windows-latest, macos-latest]
 
     steps:
     - uses: actions/checkout@v3
-    - name: Build
-      run: cargo build --verbose
+    - name: Install latest nightly
+      uses: actions-rs/toolchain@v1
+      with:
+          toolchain: nightly
+    - name: Build succeed test
+      run: cargo build --verbose -p strict_linking_success_test
+    - name: Build fail test
+      run: cargo run -p prove-it-fails -- cargo build --verbose -p strict_linking_fail_test
     - name: Run tests
       run: cargo test --verbose
