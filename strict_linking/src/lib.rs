@@ -1,6 +1,5 @@
 extern crate core;
 
-use std::env::VarError;
 use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;
@@ -12,16 +11,10 @@ const NO_RECURSE_ENV: &str = "__STRICT_LINKING_ACTIVE";
 
 /// Enforces strict linking for your crate. Use this from `build.rs`!
 pub fn init() {
-    let env = env::var("CARGO_CFG_TARGET_ENV");
-    if env::var("CARGO_CFG_TARGET_VENDOR").as_deref() == Ok("apple") {
-        // Apple makes this really easy. Thanks Apple.
-        println!("cargo:rustc-link-arg=-undefined");
-        println!("cargo:rustc-link-arg=error");
-        return;
-    }
     if env::var(NO_RECURSE_ENV).is_ok() {
         return;
     }
+    let style = LinkerArgStyle::detect();
     let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
     let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
     let mut cmd = Command::new("cargo");
@@ -84,12 +77,13 @@ pub fn init() {
                                 })
                                 .and_then(|l| match l {
                                     syn::Lit::Str(s) => Some(
-                                        convert_symbol_to_linker_format(&s.value()).to_string(),
+                                        convert_symbol_to_linker_format(&s.value(), style)
+                                            .to_string(),
                                     ),
                                     _ => None,
                                 })
                                 .unwrap_or_else(|| function.sig.ident.to_string());
-                            strict_link_symbol(&mut arglist, &c_name, &env);
+                            strict_link_symbol(&mut arglist, &c_name, style);
                         }
                     }
                 }
@@ -98,10 +92,13 @@ pub fn init() {
     }
     arglist.flush().unwrap();
     mem::drop(arglist);
-    if env.as_deref() == Ok("gnu") {
-        println!("cargo:rustc-link-arg=-Wl,@{}", arglist_path.display());
-    } else {
-        println!("cargo:rustc-link-arg=@{}", arglist_path.display());
+    match style {
+        LinkerArgStyle::Gcc => {
+            println!("cargo:rustc-link-arg=-Wl,@{}", arglist_path.display());
+        }
+        _ => {
+            println!("cargo:rustc-link-arg=@{}", arglist_path.display());
+        }
     }
     println!(
         "cargo:rerun-if-changed={}",
@@ -109,19 +106,50 @@ pub fn init() {
     );
 }
 
-fn strict_link_symbol(out: &mut impl Write, s: &str, env: &Result<String, VarError>) {
-    match env.as_deref() {
-        Ok("msvc") => writeln!(out, "/INCLUDE:\"{}\"", s),
-        _ => writeln!(out, "--require-defined={}", s),
+fn strict_link_symbol(out: &mut impl Write, s: &str, style: LinkerArgStyle) {
+    match style {
+        LinkerArgStyle::Gcc => {
+            writeln!(out, "--require-defined={}", s)
+        }
+        LinkerArgStyle::Ld => {
+            writeln!(out, "--undefined={}", s)
+        }
+        LinkerArgStyle::Msvc => {
+            writeln!(out, "/INCLUDE:\"{}\"", s)
+        }
     }
     .expect("Failed to write to arg file");
 }
 
-fn convert_symbol_to_linker_format(s: &str) -> &str {
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+enum LinkerArgStyle {
+    Gcc,
+    Ld,
+    Msvc,
+}
+
+impl LinkerArgStyle {
+    fn detect() -> Self {
+        // While we'd prefer to have the linker flavor, that's not available to build scripts.
+        // So this is a best effort to detect the correct style. If this isn't working for you, PRs
+        // to improve it are welcome.
+        if env::var("CARGO_CFG_TARGET_VENDOR").as_deref() == Ok("apple") {
+            LinkerArgStyle::Ld
+        } else {
+            match env::var("CARGO_CFG_TARGET_ENV").as_deref() {
+                Ok("msvc") => LinkerArgStyle::Msvc,
+                Ok("gnu") => LinkerArgStyle::Gcc,
+                _ => LinkerArgStyle::Ld,
+            }
+        }
+    }
+}
+
+fn convert_symbol_to_linker_format(s: &str, style: LinkerArgStyle) -> &str {
     if s.is_empty() {
         return "";
     }
-    if env::var("CARGO_CFG_TARGET_ENV").as_deref() == Ok("msvc") {
+    if style == LinkerArgStyle::Msvc {
         if s.chars().skip(1).next() == Some('?') {
             &s[1..]
         } else {
