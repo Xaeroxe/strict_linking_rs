@@ -28,4 +28,4 @@ jobs:
     - name: Build fail test
       run: cargo run -p prove-it-fails -- cargo build --verbose -p strict_linking_fail_test
     - name: Run tests
-      run: cargo test --verbose
+      run: cargo test --verbose -p strict_linking
