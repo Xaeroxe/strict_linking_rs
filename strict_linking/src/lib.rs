@@ -93,11 +93,11 @@ pub fn init() {
     arglist.flush().unwrap();
     mem::drop(arglist);
     match style {
-        LinkerArgStyle::Gcc => {
-            println!("cargo:rustc-link-arg=-Wl,@{}", arglist_path.display());
+        LinkerArgStyle::Msvc => {
+            println!("cargo:rustc-link-arg=@{}", arglist_path.display());
         }
         _ => {
-            println!("cargo:rustc-link-arg=@{}", arglist_path.display());
+            println!("cargo:rustc-link-arg=-Wl,@{}", arglist_path.display());
         }
     }
     println!(
