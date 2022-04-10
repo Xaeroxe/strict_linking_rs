@@ -7,9 +7,5 @@ fn main() {
         .wait()
         .unwrap()
         .success();
-    std::process::exit(if success {
-       1 
-    } else {
-        0
-    });
+    std::process::exit(if success { 1 } else { 0 });
 }

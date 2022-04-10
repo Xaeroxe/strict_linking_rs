@@ -12,6 +12,13 @@ const NO_RECURSE_ENV: &str = "__STRICT_LINKING_ACTIVE";
 
 /// Enforces strict linking for your crate. Use this from `build.rs`!
 pub fn init() {
+    let env = env::var("CARGO_CFG_TARGET_ENV");
+    if env.as_deref() == Ok("darwin") {
+        // MacOS makes this really easy. Thanks MacOS.
+        println!("cargo:rustc-link-arg=--undefined");
+        println!("cargo:rustc-link-arg=error");
+        return;
+    }
     if env::var(NO_RECURSE_ENV).is_ok() {
         return;
     }
@@ -46,8 +53,6 @@ pub fn init() {
         syn::parse_str(&utf8_stdout).expect("strict_linking failed to parse code as token stream");
     let arglist_path = out_dir.join("strict_linking_arg_list.txt");
     let mut arglist = File::create(&arglist_path).expect("Failed to create arg list file!");
-    let env = env::var("CARGO_CFG_TARGET_ENV");
-
     for item in tree.items.iter() {
         call_recurse(item, &mut |item| {
             if let Item::ForeignMod(foreigners) = item {
