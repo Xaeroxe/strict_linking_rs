@@ -112,7 +112,7 @@ fn strict_link_symbol(out: &mut impl Write, s: &str, style: LinkerArgStyle) {
             writeln!(out, "--require-defined={}", s)
         }
         LinkerArgStyle::Ld => {
-            writeln!(out, "--undefined={}", s)
+            writeln!(out, "-u _{}", s)
         }
         LinkerArgStyle::Msvc => {
             writeln!(out, "/INCLUDE:\"{}\"", s)
