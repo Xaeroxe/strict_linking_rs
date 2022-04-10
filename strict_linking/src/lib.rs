@@ -13,10 +13,9 @@ const NO_RECURSE_ENV: &str = "__STRICT_LINKING_ACTIVE";
 /// Enforces strict linking for your crate. Use this from `build.rs`!
 pub fn init() {
     let env = env::var("CARGO_CFG_TARGET_ENV");
-    if env.as_deref() == Ok("darwin") {
-        // MacOS makes this really easy. Thanks MacOS.
-        println!("cargo:rustc-link-arg=--undefined");
-        println!("cargo:rustc-link-arg=error");
+    if env::var("CARGO_CFG_TARGET_VENDOR").as_deref() == Ok("apple") {
+        // Apple makes this really easy. Thanks Apple.
+        println!("cargo:rustc-link-arg=-Wl,--undefined,error");
         return;
     }
     if env::var(NO_RECURSE_ENV).is_ok() {
