@@ -92,17 +92,18 @@ pub fn init() {
     }
     arglist.flush().unwrap();
     mem::drop(arglist);
+    let arglist_path = arglist_path.canonicalize().unwrap();
     match style {
         LinkerArgStyle::Msvc => {
-            println!("cargo:rustc-link-arg=@{}", arglist_path.display());
+            println!("cargo:rustc-link-arg=@{}", arglist_path.to_str().unwrap());
         }
         _ => {
-            println!("cargo:rustc-link-arg=-Wl,@{}", arglist_path.display());
+            println!("cargo:rustc-link-arg=-Wl,@{}", arglist_path.to_str().unwrap());
         }
     }
     println!(
         "cargo:rerun-if-changed={}",
-        manifest_dir.join("src").display()
+        manifest_dir.join("src").canonicalize().unwrap().to_str().unwrap()
     );
 }
 
