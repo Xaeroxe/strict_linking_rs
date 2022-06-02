@@ -3,7 +3,9 @@ Enforces the requirement that all functions defined inside your crate's `extern 
 
 ## Warning
 
-This may significantly increase your build time.
+This software has not been tested on many systems and is known to be incompatible with some project setups. It's considered to be "In Beta".
+Our aim is to be compatible with as much as possible, however linkers are moody and fickle. I welcome issue reports and minimal reproductions.
+Additionally, using this may significantly increase your build time.
 
 # To use
 
